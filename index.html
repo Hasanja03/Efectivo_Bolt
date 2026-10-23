@@ -17,6 +17,7 @@
     <h1>Efectivo Bolt</h1>
     <nav class="tabs" role="tablist">
       <button class="tab active" data-view="hoy" role="tab">Día</button>
+      <button class="tab" data-view="banco" role="tab">Banco</button>
       <button class="tab" data-view="historial" role="tab">Historial</button>
       <button class="tab" data-view="ajustes" role="tab">Copia</button>
     </nav>
@@ -25,6 +26,8 @@
   <main>
     <!-- ===== DÍA ===== -->
     <section id="view-hoy" class="view active">
+      <button class="saldo-banner" id="banner-saldo" type="button"></button>
+
       <div class="day-nav">
         <button id="prev-day" class="icon-btn" aria-label="Día anterior">‹</button>
         <input type="date" id="fecha">
@@ -63,6 +66,50 @@
           <div class="card total"><span>Efectivo cobrado</span><strong id="sum-total">–</strong></div>
         </div>
         <p class="muted center" id="sum-texto"></p>
+      </section>
+    </section>
+
+    <!-- ===== BANCO ===== -->
+    <section id="view-banco" class="view">
+      <section class="panel">
+        <h2>Efectivo de Bolt sin ingresar</h2>
+        <p class="saldo" id="b-saldo">0,00 €</p>
+        <div class="meter" role="progressbar" aria-valuemin="0" id="b-meter"><div id="b-meter-fill"></div></div>
+        <p class="muted" id="b-texto"></p>
+      </section>
+
+      <form id="form-ingreso" class="panel" autocomplete="off">
+        <h2>Apuntar un ingreso en el banco</h2>
+        <div class="row">
+          <label>Cantidad ingresada
+            <input id="g-importe" inputmode="decimal" placeholder="Ej: 150" required>
+          </label>
+          <label>Fecha
+            <input id="g-fecha" type="date" required>
+          </label>
+        </div>
+        <label>Nota (opcional)
+          <input id="g-nota" placeholder="Ej: cajero Santander">
+        </label>
+        <button type="submit" class="primary">Guardar ingreso</button>
+      </form>
+
+      <section class="panel">
+        <h2>Ingresos hechos</h2>
+        <ul id="lista-ingresos" class="list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Ajustes</h2>
+        <div class="row">
+          <label>Límite de efectivo
+            <input id="b-limite" inputmode="decimal" placeholder="200">
+          </label>
+          <label>Ya debía antes de usar la app
+            <input id="b-inicial" inputmode="decimal" placeholder="0,00">
+          </label>
+        </div>
+        <p class="hint">Si cuando empezaste a usar la app ya tenías efectivo de Bolt sin ingresar, ponlo en “Ya debía”. Te aviso cuando llegues al 80 % del límite.</p>
       </section>
     </section>
 

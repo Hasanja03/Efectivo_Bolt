@@ -14,10 +14,17 @@ App web para el móvil que lleva el control del **efectivo** de cada día trabaj
    - **Para Bolt** = suma de los importes en efectivo → lo apartas.
    - **Efectivo cobrado** = lo que tienes − el cambio con el que empezaste.
    - **Mi propina** = efectivo cobrado − lo de Bolt → es tuyo.
-4. **Historial**: totales de la semana, el mes o todo, día por día. Toca un día para abrirlo o corregirlo.
-5. **Copia**: descarga un CSV para Excel o una copia de seguridad (JSON) que puedes restaurar.
+4. **Banco**: cada vez que ingreses efectivo de Bolt en el banco, apúntalo aquí. La app lleva la cuenta de cuánto efectivo de Bolt tienes **sin ingresar** (lo de Bolt de todos los días − lo ingresado) y te avisa al acercarte al límite de 200 € (se puede cambiar). Arriba de la pantalla del día siempre ves ese saldo.
+5. **Historial**: totales de la semana, el mes o todo, día por día. Toca un día para abrirlo o corregirlo.
+6. **Copia**: descarga un CSV para Excel o una copia de seguridad (JSON) que puedes restaurar.
 
-Los datos se guardan **solo en tu móvil** (en el navegador). Haz una copia de seguridad de vez en cuando.
+## Dónde se guardan los datos
+
+Todo lo que metes se guarda **solo en tu móvil**, dentro del almacenamiento del navegador (`localStorage`). No se envía a ningún servidor ni a GitHub: el repositorio solo tiene el código de la app.
+
+Por eso:
+- Si borras los datos del navegador, desinstalas el navegador o cambias de móvil, se pierden.
+- Haz de vez en cuando *Copia → Descargar copia de seguridad* y guarda el archivo (Drive, correo, WhatsApp…). Con *Restaurar copia* lo recuperas en cualquier móvil.
 
 ## Instalarla en el móvil
 

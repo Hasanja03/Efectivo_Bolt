@@ -106,6 +106,7 @@ function migrar() {
     }
     if (!Array.isArray(d.importes)) d.importes = [];
   }
+  if (!Array.isArray(data.ingresos)) data.ingresos = [];
 }
 
 function fondoDe(iso) {
@@ -150,6 +151,7 @@ function renderResultado() {
   $('i-total').textContent = eur(t.bolt);
   $('i-count').textContent = n ? `(${n} ${n === 1 ? 'viaje' : 'viajes'})` : '';
   $('sum-bolt').textContent = eur(t.bolt);
+  renderBanner();
 
   const prop = $('sum-propina');
   if (t.total == null) {
@@ -206,6 +208,107 @@ function onCuentaInput(campo, input) {
   limpiarDia(fechaActual);
   save();
   renderResultado();
+}
+
+/* ---------- Banco: efectivo de Bolt pendiente de ingresar ---------- */
+
+const AVISO = 0.8; // avisar al llegar al 80 % del límite
+
+function limite() {
+  return data.limite ?? 20000;
+}
+
+// Lo que debo a Bolt = lo que ya debía al empezar + todo el efectivo de Bolt − lo ingresado
+function saldoPendiente() {
+  let bolt = 0;
+  for (const d of Object.values(data.days)) bolt += d.importes.reduce((a, b) => a + b, 0);
+  const ingresado = data.ingresos.reduce((a, g) => a + g.importe, 0);
+  return (data.saldoInicial || 0) + bolt - ingresado;
+}
+
+function nivel(saldo) {
+  if (saldo >= limite()) return 'limite';
+  if (saldo >= limite() * AVISO) return 'aviso';
+  return '';
+}
+
+function renderBanner() {
+  const saldo = saldoPendiente();
+  const n = nivel(saldo);
+  const el = $('banner-saldo');
+  el.className = 'saldo-banner ' + n;
+  el.innerHTML = `<span>Sin ingresar en el banco: ${eur(saldo)} de ${eur(limite())}</span><span>${n ? '⚠️' : '›'}</span>`;
+}
+
+function renderBanco() {
+  const saldo = saldoPendiente();
+  const n = nivel(saldo);
+  const lim = limite();
+
+  $('b-saldo').textContent = eur(saldo);
+  $('b-saldo').className = 'saldo ' + n;
+  $('b-meter').className = 'meter ' + n;
+  $('b-meter').setAttribute('aria-valuemax', lim);
+  $('b-meter').setAttribute('aria-valuenow', Math.max(0, saldo));
+  $('b-meter-fill').style.width = lim > 0 ? Math.min(100, Math.max(0, saldo / lim * 100)) + '%' : '0';
+
+  let texto;
+  if (saldo < 0) texto = `Has ingresado ${eur(-saldo)} de más.`;
+  else if (n === 'limite') texto = `Has llegado al límite de ${eur(lim)}. Ingresa ya en el banco.`;
+  else if (n === 'aviso') texto = `Te quedan ${eur(lim - saldo)} para el límite. Ingresa pronto.`;
+  else texto = `Te quedan ${eur(lim - saldo)} para llegar al límite de ${eur(lim)}.`;
+  const ultimo = [...data.ingresos].sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+  if (ultimo) texto += ` Último ingreso: ${eur(ultimo.importe)} el ${fechaLarga(ultimo.fecha)}.`;
+  $('b-texto').textContent = texto;
+
+  if (!$('g-fecha').value) $('g-fecha').value = hoy();
+  if (document.activeElement !== $('b-limite')) $('b-limite').value = centsToInput(lim);
+  if (document.activeElement !== $('b-inicial')) $('b-inicial').value = data.saldoInicial ? centsToInput(data.saldoInicial) : '';
+
+  const lista = [...data.ingresos].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  $('lista-ingresos').innerHTML = lista.length
+    ? lista.map(g => `<li>
+        <div class="main">
+          <strong>${fechaLarga(g.fecha)}</strong>
+          ${g.nota ? `<small>${escapeHtml(g.nota)}</small>` : ''}
+        </div>
+        <div class="amt">${eur(g.importe)}</div>
+        <button class="del" data-id="${g.id}" aria-label="Borrar ingreso">✕</button>
+      </li>`).join('')
+    : '<li class="empty">Aún no has apuntado ningún ingreso.</li>';
+}
+
+function addIngreso(e) {
+  e.preventDefault();
+  const importe = toCents($('g-importe').value);
+  if (importe == null || importe <= 0) {
+    toast('Pon la cantidad ingresada');
+    $('g-importe').focus();
+    return;
+  }
+  data.ingresos.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    fecha: $('g-fecha').value || hoy(),
+    importe,
+    nota: $('g-nota').value.trim(),
+  });
+  save();
+  $('g-importe').value = '';
+  $('g-nota').value = '';
+  renderBanco();
+  toast('Ingreso guardado');
+}
+
+function delIngreso(id) {
+  const g = data.ingresos.find(x => x.id === id);
+  if (!g || !confirm(`¿Borrar el ingreso de ${eur(g.importe)}?`)) return;
+  data.ingresos = data.ingresos.filter(x => x.id !== id);
+  save();
+  renderBanco();
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 /* ---------- Vista Historial ---------- */
@@ -280,6 +383,11 @@ function exportCSV() {
     const t = totalesDia(d);
     lineas.push([iso, t.viajes, num(t.bolt), num(t.propina), num(t.total), num(d.fondo), num(d.contado)].join(';'));
   }
+  lineas.push('', 'Ingresos en el banco', 'Fecha;Cantidad;Nota');
+  for (const g of [...data.ingresos].sort((a, b) => a.fecha.localeCompare(b.fecha))) {
+    lineas.push([g.fecha, num(g.importe), (g.nota || '').replace(/[;\r\n]/g, ' ')].join(';'));
+  }
+  lineas.push('', `Sin ingresar a día ${hoy()};${num(saldoPendiente())}`);
   // BOM para que Excel lea bien los acentos
   descargar(`efectivo-bolt-${hoy()}.csv`, '﻿' + lineas.join('\r\n'), 'text/csv;charset=utf-8');
 }
@@ -302,6 +410,7 @@ function importJSON(e) {
       save();
       renderDia();
       renderHistorial();
+      renderBanco();
       toast('Copia restaurada');
     } catch (err) {
       toast('El archivo no es una copia válida');
@@ -318,6 +427,7 @@ function showView(name) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
   if (name === 'historial') renderHistorial();
+  if (name === 'banco') renderBanco();
   if (name === 'hoy') renderDia();
   window.scrollTo(0, 0);
 }
@@ -353,6 +463,24 @@ $('periodo').addEventListener('click', e => {
 $('lista-dias').addEventListener('click', e => {
   const li = e.target.closest('[data-dia]');
   if (li) irADia(li.dataset.dia);
+});
+
+$('banner-saldo').addEventListener('click', () => showView('banco'));
+$('form-ingreso').addEventListener('submit', addIngreso);
+$('lista-ingresos').addEventListener('click', e => {
+  const btn = e.target.closest('.del');
+  if (btn) delIngreso(btn.dataset.id);
+});
+$('b-limite').addEventListener('input', e => {
+  const v = toCents(e.target.value);
+  data.limite = v == null || v <= 0 ? null : v;
+  save();
+  renderBanco();
+});
+$('b-inicial').addEventListener('input', e => {
+  data.saldoInicial = toCents(e.target.value) || 0;
+  save();
+  renderBanco();
 });
 
 $('exp-csv').addEventListener('click', exportCSV);

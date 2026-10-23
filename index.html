@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b8a5a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Efectivo">
+  <title>Efectivo Bolt</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Efectivo Bolt</h1>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="hoy" role="tab">Día</button>
+      <button class="tab" data-view="historial" role="tab">Historial</button>
+      <button class="tab" data-view="ajustes" role="tab">Copia</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ===== DÍA ===== -->
+    <section id="view-hoy" class="view active">
+      <div class="day-nav">
+        <button id="prev-day" class="icon-btn" aria-label="Día anterior">‹</button>
+        <input type="date" id="fecha">
+        <button id="next-day" class="icon-btn" aria-label="Día siguiente">›</button>
+      </div>
+
+      <div class="cards">
+        <div class="card bolt"><span>De Bolt</span><strong id="sum-bolt">0,00 €</strong></div>
+        <div class="card tip"><span>Mis propinas</span><strong id="sum-propina">0,00 €</strong></div>
+        <div class="card total"><span>Efectivo total</span><strong id="sum-total">0,00 €</strong></div>
+      </div>
+      <p class="muted center" id="sum-viajes">0 viajes en efectivo</p>
+
+      <form id="form-viaje" class="panel" autocomplete="off">
+        <h2>Añadir viaje en efectivo</h2>
+        <label>Precio del viaje (lo que marca Bolt)
+          <input id="v-precio" inputmode="decimal" placeholder="Ej: 8,70" required>
+        </label>
+        <div class="row">
+          <label>Me ha dado
+            <input id="v-recibido" inputmode="decimal" placeholder="Ej: 10">
+          </label>
+          <label>Le devuelvo
+            <input id="v-cambio" inputmode="decimal" placeholder="Ej: 1">
+          </label>
+        </div>
+        <p class="preview" id="v-preview">Propina: 0,00 €</p>
+        <label>Nota (opcional)
+          <input id="v-nota" placeholder="Ej: aeropuerto">
+        </label>
+        <button type="submit" class="primary">Guardar viaje</button>
+        <p class="hint">Si no te da propina deja “Me ha dado” vacío. Si le falta dinero, la propina sale negativa (la pagas tú).</p>
+      </form>
+
+      <section class="panel">
+        <h2>Viajes del día</h2>
+        <ul id="lista-viajes" class="list"></ul>
+      </section>
+
+      <section class="panel">
+        <h2>Cierre del día (recuento)</h2>
+        <div class="row">
+          <label>Cambio con el que empecé
+            <input id="c-fondo" inputmode="decimal" placeholder="0,00">
+          </label>
+          <label>Dinero contado al final
+            <input id="c-contado" inputmode="decimal" placeholder="0,00">
+          </label>
+        </div>
+        <dl class="cierre">
+          <dt>Debería tener (fondo + Bolt + propinas)</dt><dd id="c-esperado">–</dd>
+          <dt>Diferencia con lo contado</dt><dd id="c-diferencia">–</dd>
+          <dt>Propina real según recuento</dt><dd id="c-propina-real">–</dd>
+          <dt>Separa para Bolt</dt><dd id="c-bolt">–</dd>
+        </dl>
+        <p class="hint">Truco: si no apuntas cada propina, apunta solo el precio de cada viaje y al final cuenta la cartera. La propina real = contado − cambio inicial − Bolt.</p>
+      </section>
+    </section>
+
+    <!-- ===== HISTORIAL ===== -->
+    <section id="view-historial" class="view">
+      <div class="seg" id="periodo">
+        <button data-p="semana" class="active">Semana</button>
+        <button data-p="mes">Mes</button>
+        <button data-p="todo">Todo</button>
+      </div>
+      <div class="cards">
+        <div class="card bolt"><span>De Bolt</span><strong id="h-bolt">0,00 €</strong></div>
+        <div class="card tip"><span>Mis propinas</span><strong id="h-propina">0,00 €</strong></div>
+        <div class="card total"><span>Efectivo total</span><strong id="h-total">0,00 €</strong></div>
+      </div>
+      <p class="muted center" id="h-resumen"></p>
+      <section class="panel">
+        <h2>Días</h2>
+        <ul id="lista-dias" class="list"></ul>
+      </section>
+    </section>
+
+    <!-- ===== COPIA ===== -->
+    <section id="view-ajustes" class="view">
+      <section class="panel">
+        <h2>Exportar</h2>
+        <p class="hint">Los datos se guardan solo en este móvil. Haz copias de vez en cuando.</p>
+        <button id="exp-csv" class="primary">Descargar Excel (CSV)</button>
+        <button id="exp-json">Descargar copia de seguridad</button>
+      </section>
+      <section class="panel">
+        <h2>Restaurar copia</h2>
+        <input type="file" id="imp-json" accept="application/json,.json">
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

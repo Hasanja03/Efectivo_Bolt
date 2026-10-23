@@ -31,56 +31,38 @@
         <button id="next-day" class="icon-btn" aria-label="Día siguiente">›</button>
       </div>
 
-      <div class="cards">
-        <div class="card bolt"><span>De Bolt</span><strong id="sum-bolt">0,00 €</strong></div>
-        <div class="card tip"><span>Mis propinas</span><strong id="sum-propina">0,00 €</strong></div>
-        <div class="card total"><span>Efectivo total</span><strong id="sum-total">0,00 €</strong></div>
-      </div>
-      <p class="muted center" id="sum-viajes">0 viajes en efectivo</p>
-
-      <form id="form-viaje" class="panel" autocomplete="off">
-        <h2>Añadir viaje en efectivo</h2>
-        <label>Precio del viaje (lo que marca Bolt)
-          <input id="v-precio" inputmode="decimal" placeholder="Ej: 8,70" required>
-        </label>
-        <div class="row">
-          <label>Me ha dado
-            <input id="v-recibido" inputmode="decimal" placeholder="Ej: 10">
-          </label>
-          <label>Le devuelvo
-            <input id="v-cambio" inputmode="decimal" placeholder="Ej: 1">
-          </label>
-        </div>
-        <p class="preview" id="v-preview">Propina: 0,00 €</p>
-        <label>Nota (opcional)
-          <input id="v-nota" placeholder="Ej: aeropuerto">
-        </label>
-        <button type="submit" class="primary">Guardar viaje</button>
-        <p class="hint">Si no te da propina deja “Me ha dado” vacío. Si le falta dinero, la propina sale negativa (la pagas tú).</p>
-      </form>
-
       <section class="panel">
-        <h2>Viajes del día</h2>
-        <ul id="lista-viajes" class="list"></ul>
+        <h2>1. Pagos en efectivo de Bolt</h2>
+        <p class="hint">Mira en la app de Bolt los viajes pagados en efectivo y mete cada importe. Puedes escribir varios seguidos separados por espacios: <em>7,5 9,21 12</em></p>
+        <form id="form-importe" class="add-row" autocomplete="off">
+          <input id="i-importe" inputmode="decimal" placeholder="Ej: 7,50">
+          <button type="submit" class="primary" aria-label="Añadir importe">+</button>
+        </form>
+        <ul id="lista-importes" class="chips"></ul>
+        <p class="sum-line">Total de Bolt: <strong id="i-total">0,00 €</strong> <span class="muted" id="i-count"></span></p>
       </section>
 
       <section class="panel">
-        <h2>Cierre del día (recuento)</h2>
+        <h2>2. Cuenta tu dinero</h2>
         <div class="row">
           <label>Cambio con el que empecé
             <input id="c-fondo" inputmode="decimal" placeholder="0,00">
           </label>
-          <label>Dinero contado al final
+          <label>Efectivo que tengo ahora
             <input id="c-contado" inputmode="decimal" placeholder="0,00">
           </label>
         </div>
-        <dl class="cierre">
-          <dt>Debería tener (fondo + Bolt + propinas)</dt><dd id="c-esperado">–</dd>
-          <dt>Diferencia con lo contado</dt><dd id="c-diferencia">–</dd>
-          <dt>Propina real según recuento</dt><dd id="c-propina-real">–</dd>
-          <dt>Separa para Bolt</dt><dd id="c-bolt">–</dd>
-        </dl>
-        <p class="hint">Truco: si no apuntas cada propina, apunta solo el precio de cada viaje y al final cuenta la cartera. La propina real = contado − cambio inicial − Bolt.</p>
+        <p class="hint">El cambio inicial se recuerda para el día siguiente. Si empezaste sin dinero, déjalo en 0.</p>
+      </section>
+
+      <section class="panel resultado">
+        <h2>3. Resultado del día</h2>
+        <div class="cards">
+          <div class="card bolt"><span>Para Bolt</span><strong id="sum-bolt">0,00 €</strong></div>
+          <div class="card tip"><span>Mi propina</span><strong id="sum-propina">–</strong></div>
+          <div class="card total"><span>Efectivo cobrado</span><strong id="sum-total">–</strong></div>
+        </div>
+        <p class="muted center" id="sum-texto"></p>
       </section>
     </section>
 
@@ -92,9 +74,9 @@
         <button data-p="todo">Todo</button>
       </div>
       <div class="cards">
-        <div class="card bolt"><span>De Bolt</span><strong id="h-bolt">0,00 €</strong></div>
+        <div class="card bolt"><span>Para Bolt</span><strong id="h-bolt">0,00 €</strong></div>
         <div class="card tip"><span>Mis propinas</span><strong id="h-propina">0,00 €</strong></div>
-        <div class="card total"><span>Efectivo total</span><strong id="h-total">0,00 €</strong></div>
+        <div class="card total"><span>Efectivo cobrado</span><strong id="h-total">0,00 €</strong></div>
       </div>
       <p class="muted center" id="h-resumen"></p>
       <section class="panel">

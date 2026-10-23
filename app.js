@@ -66,9 +66,6 @@ const fmt = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' 
 function eur(cents) {
   return fmt.format((cents || 0) / 100);
 }
-function eurSigned(cents) {
-  return (cents > 0 ? '+' : '') + eur(cents);
-}
 function centsToInput(cents) {
   return cents == null ? '' : (cents / 100).toFixed(2).replace('.', ',');
 }
@@ -85,35 +82,46 @@ function toast(msg) {
   toast._t = setTimeout(() => { t.hidden = true; }, 2200);
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
 /* ---------- Cálculos ---------- */
 
+// Un día guarda los importes en efectivo que marca Bolt, el cambio con el que
+// se empezó (fondo) y el efectivo contado al final de la jornada.
 function getDay(iso) {
-  return data.days[iso] || { fondo: null, contado: null, viajes: [] };
+  return data.days[iso] || { importes: [], fondo: null, contado: null };
 }
 
 function ensureDay(iso) {
-  if (!data.days[iso]) data.days[iso] = { fondo: null, contado: null, viajes: [] };
+  if (!data.days[iso]) {
+    data.days[iso] = { importes: [], fondo: data.fondoHabitual ?? null, contado: null };
+  }
   return data.days[iso];
 }
 
-// Lo que se queda en tu bolsillo de un viaje = lo que te dio − lo que devolviste.
-// Si no se apuntó lo recibido, se asume que pagó justo.
-function netoViaje(v) {
-  if (v.recibido == null) return v.precio;
-  return v.recibido - (v.cambio || 0);
+// Versión anterior: se apuntaba viaje por viaje. Nos quedamos con el precio de cada uno.
+function migrar() {
+  for (const d of Object.values(data.days)) {
+    if (Array.isArray(d.viajes)) {
+      d.importes = (d.importes || []).concat(d.viajes.map(v => v.precio));
+      delete d.viajes;
+    }
+    if (!Array.isArray(d.importes)) d.importes = [];
+  }
 }
 
+function fondoDe(iso) {
+  const d = data.days[iso];
+  if (d && d.fondo != null) return d.fondo;
+  return d ? 0 : (data.fondoHabitual || 0);
+}
+
+// cobrado = lo que tengo − el cambio con el que empecé
+// propina = cobrado − lo que es de Bolt
+// Mientras no se haya contado el dinero, cobrado y propina son null.
 function totalesDia(day) {
-  let bolt = 0, total = 0;
-  for (const v of day.viajes) {
-    bolt += v.precio;
-    total += netoViaje(v);
-  }
-  return { bolt, total, propina: total - bolt, viajes: day.viajes.length };
+  const bolt = day.importes.reduce((a, b) => a + b, 0);
+  if (day.contado == null) return { bolt, total: null, propina: null, viajes: day.importes.length };
+  const total = day.contado - (day.fondo || 0);
+  return { bolt, total, propina: total - bolt, viajes: day.importes.length };
 }
 
 /* ---------- Vista Día ---------- */
@@ -121,120 +129,64 @@ function totalesDia(day) {
 function renderDia() {
   $('fecha').value = fechaActual;
   const day = getDay(fechaActual);
-  const t = totalesDia(day);
 
-  $('sum-bolt').textContent = eur(t.bolt);
-  $('sum-propina').textContent = eur(t.propina);
-  $('sum-total').textContent = eur(t.total);
-  $('sum-viajes').textContent =
-    `${fechaLarga(fechaActual)} · ${t.viajes} ${t.viajes === 1 ? 'viaje' : 'viajes'} en efectivo`;
-
-  const ul = $('lista-viajes');
-  if (!day.viajes.length) {
-    ul.innerHTML = '<li class="empty">Aún no hay viajes este día.</li>';
-  } else {
-    ul.innerHTML = day.viajes.map((v, i) => {
-      const prop = netoViaje(v) - v.precio;
-      const detalle = v.recibido == null
-        ? 'Pagó justo'
-        : `Dio ${eur(v.recibido)}${v.cambio ? ` · devolví ${eur(v.cambio)}` : ''}`;
-      return `<li>
-        <div class="main">
-          <strong>#${i + 1} · ${v.hora || ''}</strong>
-          <small>${detalle}${v.nota ? ' · ' + escapeHtml(v.nota) : ''}</small>
-        </div>
-        <div class="amt">
-          ${eur(v.precio)}
-          ${prop ? `<small class="${prop < 0 ? 'neg' : ''}">propina ${eurSigned(prop)}</small>` : ''}
-        </div>
-        <button class="del" data-id="${v.id}" aria-label="Borrar viaje">✕</button>
-      </li>`;
-    }).join('');
-  }
+  const ul = $('lista-importes');
+  ul.innerHTML = day.importes.length
+    ? day.importes.map((c, i) =>
+        `<li>${eur(c)}<button class="del" data-i="${i}" aria-label="Quitar ${eur(c)}">✕</button></li>`).join('')
+    : '<li class="empty">Aún no has metido ningún importe.</li>';
 
   // No pisar lo que el usuario está escribiendo
-  if (document.activeElement !== $('c-fondo')) $('c-fondo').value = centsToInput(day.fondo);
+  if (document.activeElement !== $('c-fondo')) $('c-fondo').value = centsToInput(fondoDe(fechaActual));
   if (document.activeElement !== $('c-contado')) $('c-contado').value = centsToInput(day.contado);
-  renderCierre();
+  renderResultado();
 }
 
-function renderCierre() {
+function renderResultado() {
   const day = getDay(fechaActual);
   const t = totalesDia(day);
-  const fondo = day.fondo || 0;
-  const esperado = fondo + t.total;
+  const n = t.viajes;
 
-  $('c-esperado').textContent = eur(esperado);
-  $('c-bolt').textContent = eur(t.bolt);
+  $('i-total').textContent = eur(t.bolt);
+  $('i-count').textContent = n ? `(${n} ${n === 1 ? 'viaje' : 'viajes'})` : '';
+  $('sum-bolt').textContent = eur(t.bolt);
 
-  const dif = $('c-diferencia');
-  const real = $('c-propina-real');
-  if (day.contado == null) {
-    dif.textContent = '–';
-    real.textContent = '–';
-    dif.className = real.className = '';
-  } else {
-    const d = day.contado - esperado;
-    const p = day.contado - fondo - t.bolt;
-    dif.textContent = d === 0 ? 'Cuadra ✔' : eurSigned(d);
-    dif.className = d < 0 ? 'neg' : d > 0 ? 'pos' : '';
-    real.textContent = eur(p);
-    real.className = p < 0 ? 'neg' : 'pos';
-  }
-}
-
-function updatePreview() {
-  const precio = toCents($('v-precio').value);
-  const recibido = toCents($('v-recibido').value);
-  const cambio = toCents($('v-cambio').value) || 0;
-  const el = $('v-preview');
-  if (precio == null) {
-    el.textContent = 'Propina: 0,00 €';
-    el.className = 'preview';
+  const prop = $('sum-propina');
+  if (t.total == null) {
+    prop.textContent = '–';
+    prop.className = '';
+    $('sum-total').textContent = '–';
+    $('sum-texto').textContent = `${fechaLarga(fechaActual)} · cuenta tu dinero para ver la propina`;
     return;
   }
-  const neto = recibido == null ? precio : recibido - cambio;
-  const prop = neto - precio;
-  el.textContent = prop < 0
-    ? `Faltan ${eur(-prop)} (los pones tú)`
-    : `Propina: ${eur(prop)} · Bolt: ${eur(precio)}`;
-  el.className = 'preview' + (prop < 0 ? ' neg' : '');
+  prop.textContent = eur(t.propina);
+  prop.className = t.propina < 0 ? 'neg' : '';
+  $('sum-total').textContent = eur(t.total);
+  $('sum-texto').textContent = t.propina < 0
+    ? `Te faltan ${eur(-t.propina)} para cubrir lo de Bolt`
+    : `Aparta ${eur(t.bolt)} para Bolt · ${eur(t.propina)} son tuyos`;
 }
 
-function addViaje(e) {
+function addImportes(e) {
   e.preventDefault();
-  const precio = toCents($('v-precio').value);
-  if (precio == null || precio <= 0) {
-    toast('Pon el precio del viaje');
-    $('v-precio').focus();
+  const input = $('i-importe');
+  const partes = input.value.split(/[\s+;]+/).filter(Boolean);
+  const nuevos = partes.map(toCents);
+  if (!nuevos.length || nuevos.some(c => c == null || c <= 0)) {
+    toast('Escribe importes válidos, ej: 7,50');
+    input.focus();
     return;
   }
-  const recibido = toCents($('v-recibido').value);
-  const cambio = toCents($('v-cambio').value);
-  const now = new Date();
-  const day = ensureDay(fechaActual);
-  day.viajes.push({
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    precio,
-    recibido,
-    cambio: recibido == null ? null : (cambio || 0),
-    nota: $('v-nota').value.trim(),
-    hora: now.toTimeString().slice(0, 5),
-  });
+  ensureDay(fechaActual).importes.push(...nuevos);
   save();
-  e.target.reset();
-  updatePreview();
+  input.value = '';
+  input.focus();
   renderDia();
-  toast('Viaje guardado');
-  $('v-precio').focus();
 }
 
-function delViaje(id) {
+function delImporte(i) {
   const day = getDay(fechaActual);
-  const v = day.viajes.find(x => x.id === id);
-  if (!v) return;
-  if (!confirm(`¿Borrar el viaje de ${eur(v.precio)}?`)) return;
-  day.viajes = day.viajes.filter(x => x.id !== id);
+  day.importes.splice(i, 1);
   limpiarDia(fechaActual);
   save();
   renderDia();
@@ -243,15 +195,17 @@ function delViaje(id) {
 // Elimina días que se han quedado sin nada apuntado
 function limpiarDia(iso) {
   const d = data.days[iso];
-  if (d && !d.viajes.length && d.fondo == null && d.contado == null) delete data.days[iso];
+  if (d && !d.importes.length && d.contado == null) delete data.days[iso];
 }
 
-function onCierreInput(campo, input) {
+function onCuentaInput(campo, input) {
+  const valor = toCents(input.value);
   const day = ensureDay(fechaActual);
-  day[campo] = toCents(input.value);
+  day[campo] = valor;
+  if (campo === 'fondo') data.fondoHabitual = valor;
   limpiarDia(fechaActual);
   save();
-  renderCierre();
+  renderResultado();
 }
 
 /* ---------- Vista Historial ---------- */
@@ -276,18 +230,19 @@ function renderHistorial() {
   const [ini, fin, nombre] = rangoPeriodo();
   const dias = Object.keys(data.days).filter(d => d >= ini && d <= fin).sort().reverse();
 
-  let bolt = 0, propina = 0, total = 0, viajes = 0;
+  let bolt = 0, propina = 0, total = 0, viajes = 0, contados = 0;
   const filas = dias.map(iso => {
     const t = totalesDia(data.days[iso]);
-    bolt += t.bolt; propina += t.propina; total += t.total; viajes += t.viajes;
+    bolt += t.bolt; viajes += t.viajes;
+    if (t.total != null) { propina += t.propina; total += t.total; contados++; }
     return `<li class="clickable" data-dia="${iso}">
       <div class="main">
         <strong>${fechaLarga(iso)}</strong>
         <small>${t.viajes} ${t.viajes === 1 ? 'viaje' : 'viajes'} · Bolt ${eur(t.bolt)}</small>
       </div>
       <div class="amt">
-        ${eur(t.total)}
-        <small class="${t.propina < 0 ? 'neg' : ''}">propina ${eur(t.propina)}</small>
+        ${t.total == null ? 'Sin contar' : eur(t.total)}
+        ${t.total == null ? '' : `<small class="${t.propina < 0 ? 'neg' : ''}">propina ${eur(t.propina)}</small>`}
       </div>
     </li>`;
   });
@@ -296,9 +251,12 @@ function renderHistorial() {
   $('h-propina').textContent = eur(propina);
   $('h-total').textContent = eur(total);
   const n = dias.length;
-  $('h-resumen').textContent = n
-    ? `${viajes} viajes en ${n} ${n === 1 ? 'día' : 'días'} ${nombre} · media propina/día ${eur(Math.round(propina / n))}`
+  let resumen = n
+    ? `${viajes} viajes en ${n} ${n === 1 ? 'día' : 'días'} ${nombre}`
     : `Sin datos ${nombre}`;
+  if (contados) resumen += ` · media propina/día ${eur(Math.round(propina / contados))}`;
+  if (n > contados) resumen += ` · ${n - contados} sin contar el dinero`;
+  $('h-resumen').textContent = resumen;
   $('lista-dias').innerHTML = filas.join('') || '<li class="empty">No hay días apuntados.</li>';
 }
 
@@ -316,7 +274,7 @@ function descargar(nombre, contenido, tipo) {
 
 function exportCSV() {
   const num = c => c == null ? '' : (c / 100).toFixed(2).replace('.', ',');
-  const lineas = ['Fecha;Viajes;De Bolt;Propinas;Efectivo total;Cambio inicial;Contado final'];
+  const lineas = ['Fecha;Viajes;Para Bolt;Propina;Efectivo cobrado;Cambio inicial;Efectivo contado'];
   for (const iso of Object.keys(data.days).sort()) {
     const d = data.days[iso];
     const t = totalesDia(d);
@@ -340,6 +298,7 @@ function importJSON(e) {
       if (!parsed || typeof parsed.days !== 'object') throw new Error('formato');
       if (!confirm('Esto sustituirá los datos actuales por los de la copia. ¿Seguir?')) return;
       data = parsed;
+      migrar();
       save();
       renderDia();
       renderHistorial();
@@ -375,15 +334,14 @@ $('prev-day').addEventListener('click', () => irADia(addDays(fechaActual, -1)));
 $('next-day').addEventListener('click', () => irADia(addDays(fechaActual, 1)));
 $('fecha').addEventListener('change', e => { if (e.target.value) irADia(e.target.value); });
 
-$('form-viaje').addEventListener('submit', addViaje);
-['v-precio', 'v-recibido', 'v-cambio'].forEach(id => $(id).addEventListener('input', updatePreview));
-$('lista-viajes').addEventListener('click', e => {
+$('form-importe').addEventListener('submit', addImportes);
+$('lista-importes').addEventListener('click', e => {
   const btn = e.target.closest('.del');
-  if (btn) delViaje(btn.dataset.id);
+  if (btn) delImporte(Number(btn.dataset.i));
 });
 
-$('c-fondo').addEventListener('input', e => onCierreInput('fondo', e.target));
-$('c-contado').addEventListener('input', e => onCierreInput('contado', e.target));
+$('c-fondo').addEventListener('input', e => onCuentaInput('fondo', e.target));
+$('c-contado').addEventListener('input', e => onCuentaInput('contado', e.target));
 
 $('periodo').addEventListener('click', e => {
   const b = e.target.closest('button');
@@ -400,6 +358,8 @@ $('lista-dias').addEventListener('click', e => {
 $('exp-csv').addEventListener('click', exportCSV);
 $('exp-json').addEventListener('click', exportJSON);
 $('imp-json').addEventListener('change', importJSON);
+
+migrar();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

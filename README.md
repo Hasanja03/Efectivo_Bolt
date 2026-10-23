@@ -6,18 +6,16 @@ App web para el móvil que lleva el control del **efectivo** de cada día trabaj
 - **Mis propinas**: lo que te queda de más porque no tenías cambio (o lo que pones tú si al cliente le faltaba).
 - **Efectivo total**: todo el dinero que te has quedado ese día.
 
-## Cómo se usa
+## Cómo se usa (al final de la jornada)
 
-1. **En cada viaje en efectivo** apunta el precio que marca Bolt. Si te da más, apunta lo que te dio y lo que le devuelves: la app calcula la propina sola.
-   - Ejemplo: viaje de 8,70 €, te da 10 € y le devuelves 1 € → propina 0,30 €.
-2. **Al final del día** (sección *Cierre del día*): pon el cambio con el que empezaste y el dinero que cuentas en la cartera. La app te dice:
-   - cuánto deberías tener y si cuadra,
-   - la **propina real** según el recuento (contado − cambio inicial − Bolt),
-   - cuánto separar para Bolt.
-
-   Si no te da tiempo de apuntar cada propina, apunta solo los precios y deja que el recuento calcule la propina.
-3. **Historial**: totales de la semana, el mes o todo, día por día. Toca un día para abrirlo.
-4. **Copia**: descarga un CSV para Excel o una copia de seguridad (JSON) que puedes restaurar.
+1. **Pagos en efectivo de Bolt**: abre la app de Bolt, mira los viajes pagados en efectivo y mete cada importe. Puedes escribir varios seguidos separados por espacios (`7,5 9,21 12`). La app los suma.
+2. **Cuenta tu dinero**: pon el cambio con el que empezaste (se recuerda para el día siguiente) y el efectivo que tienes al terminar.
+3. **Resultado**:
+   - **Para Bolt** = suma de los importes en efectivo → lo apartas.
+   - **Efectivo cobrado** = lo que tienes − el cambio con el que empezaste.
+   - **Mi propina** = efectivo cobrado − lo de Bolt → es tuyo.
+4. **Historial**: totales de la semana, el mes o todo, día por día. Toca un día para abrirlo o corregirlo.
+5. **Copia**: descarga un CSV para Excel o una copia de seguridad (JSON) que puedes restaurar.
 
 Los datos se guardan **solo en tu móvil** (en el navegador). Haz una copia de seguridad de vez en cuando.
 
